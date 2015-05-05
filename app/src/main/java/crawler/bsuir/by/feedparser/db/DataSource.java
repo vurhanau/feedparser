@@ -20,7 +20,6 @@ public class DataSource extends SQLiteOpenHelper {
                     FeedEntry._ID + " INTEGER PRIMARY KEY," +
                     FeedEntry.COLUMN_NAME_TITLE + TEXT_TYPE + COMMA_SEP +
                     FeedEntry.COLUMN_NAME_DESCRIPTION + TEXT_TYPE + COMMA_SEP +
-                    FeedEntry.COLUMN_NAME_GUID + TEXT_TYPE + COMMA_SEP +
                     FeedEntry.COLUMN_NAME_LINK + TEXT_TYPE + COMMA_SEP +
                     FeedEntry.COLUMN_NAME_PUBDATE + INT_TYPE +
                     " )";

@@ -12,13 +12,13 @@ import java.util.List;
 import crawler.bsuir.by.feedparser.rss.RssFeed;
 import crawler.bsuir.by.feedparser.rss.RssFeedAggregator;
 
-public class ParserTask extends AsyncTask<ParserArg, ParserProgress, RssFeedAggregator> {
+public class ParserTask extends AsyncTask<Void, Void, RssFeedAggregator> {
 
     private final static String url = "http://www.bsuir.by/rss?rubid=102243&resid=100229";
     private Exception ex;
 
     @Override
-    protected RssFeedAggregator doInBackground(ParserArg... params) {
+    protected RssFeedAggregator doInBackground(Void... params) {
         try {
             Document doc = Jsoup.connect(url).get();
             Element root = doc.body().getElementsByTag("channel").first();

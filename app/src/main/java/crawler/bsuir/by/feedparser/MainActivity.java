@@ -1,14 +1,12 @@
 package crawler.bsuir.by.feedparser;
 
 import android.os.AsyncTask;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 
@@ -18,33 +16,35 @@ import crawler.bsuir.by.feedparser.db.DataSource;
 import crawler.bsuir.by.feedparser.rss.RssFeed;
 import crawler.bsuir.by.feedparser.rss.RssFeedAggregator;
 import crawler.bsuir.by.feedparser.task.DumpTask;
-import crawler.bsuir.by.feedparser.task.ParserArg;
-import crawler.bsuir.by.feedparser.task.ParserProgress;
+import crawler.bsuir.by.feedparser.task.ListTask;
 import crawler.bsuir.by.feedparser.task.ParserTask;
 
 
 public class MainActivity extends ActionBarActivity {
 
+    private DataSource ds;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        this.ds = new DataSource(this);
 
-        AsyncTask<ParserArg, ParserProgress, RssFeedAggregator> loadTask = new ParserTask().execute();
-
-        LinearLayout feedTable = (LinearLayout) findViewById(R.id.tableFeed);
         try {
-            AsyncTask<RssFeedAggregator, Void, RssFeedAggregator> dt = new DumpTask(new DataSource(this)).execute(loadTask.get());
-            fill(feedTable, dt.get());
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
+            AsyncTask<Void, Void, RssFeedAggregator> parserTask = new ParserTask().execute();
+            AsyncTask<RssFeedAggregator, Void, Void> dumpTask = new DumpTask(ds).execute(parserTask.get());
+            dumpTask.get();
+            AsyncTask<ListTask.Arg, Void, RssFeedAggregator> listTask = new ListTask(ds).execute();
+            LinearLayout feedTable = (LinearLayout) findViewById(R.id.tableFeed);
+            fill(feedTable, listTask.get());
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }
 
     private void fill(LinearLayout feedTable, RssFeedAggregator news) {
-        for(RssFeed feed : news) {
+        for (RssFeed feed : news) {
             feedTable.addView(row(feed));
         }
     }

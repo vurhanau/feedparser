@@ -1,5 +1,7 @@
 package crawler.bsuir.by.feedparser.rss;
 
+import android.database.Cursor;
+
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.jsoup.nodes.Element;
@@ -12,7 +14,6 @@ public class RssFeed {
     private final String title;
     private final String link;
     private final String description;
-    private final String guid;
     private final long pubDate;
 
     public RssFeed(Element rssElement) {
@@ -20,10 +21,16 @@ public class RssFeed {
             throw new IllegalArgumentException("invalid rss feed");
 
         this.title = text(rssElement, "title");
-        this.link = text(rssElement, "link");
         this.description = description(text(rssElement, "description"));
         this.pubDate = date(rssElement, "dc:date");
-        this.guid = text(rssElement, "guid");
+        this.link = text(rssElement, "guid");
+    }
+
+    public RssFeed(String title, String link, String description, long pubDate) {
+        this.title = title;
+        this.link = link;
+        this.description = description;
+        this.pubDate = pubDate;
     }
 
     private static long date(Element parent, String tagName) {
@@ -33,7 +40,7 @@ public class RssFeed {
     }
 
     private static String text(Element parent, String tagName) {
-        return parent.getElementsByTag(tagName).first().text();
+        return parent.getElementsByTag(tagName).first().text().trim();
     }
 
     private static boolean nonempty(Element parent, String tagName) {
@@ -57,10 +64,6 @@ public class RssFeed {
         return pubDate;
     }
 
-    public String guid() {
-        return guid;
-    }
-
     public String link() {
         return link;
     }
@@ -68,16 +71,14 @@ public class RssFeed {
     private boolean validate(Element rssElement) {
         return rssElement != null
                 && nonempty(rssElement, "title")
-                && nonempty(rssElement, "link")
                 && nonempty(rssElement, "description")
-                && nonempty(rssElement, "pubDate")
                 && nonempty(rssElement, "guid")
                 && nonempty(rssElement, "dc:date");
     }
 
     @Override
     public int hashCode() {
-        return guid.hashCode();
+        return (int) (pubDate ^ (pubDate >>> 32));
     }
 
     @Override
@@ -87,7 +88,7 @@ public class RssFeed {
         if (!(obj instanceof RssFeed)) return false;
         RssFeed that = (RssFeed) obj;
 
-        return guid.equals(that.guid);
+        return pubDate == that.pubDate;
     }
 
     @Override
