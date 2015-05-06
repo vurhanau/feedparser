@@ -16,8 +16,8 @@ import static crawler.bsuir.by.feedparser.db.FeedReaderContract.FeedEntry;
 
 public class ListTask extends AsyncTask<ListTask.Arg, Void, RssFeedAggregator> {
 
-    private final static String inPeriod = "select " + FeedEntry.COLUMNS_STRING + " from " + FeedEntry.TABLE_NAME +
-            " where " + FeedEntry.KEY + " >= ? and " + FeedEntry.KEY + " < ?;";
+    private final static String inPeriod = "select " + FeedEntry.COLUMNS_STRING + " from " + FeedEntry.TABLE_NAME
+            + " where " + FeedEntry.KEY + " >= ? and " + FeedEntry.KEY + " < ?;";
     private final DataSource ds;
 
     public ListTask(DataSource ds) {
@@ -28,6 +28,12 @@ public class ListTask extends AsyncTask<ListTask.Arg, Void, RssFeedAggregator> {
     protected RssFeedAggregator doInBackground(Arg... params) {
         SQLiteDatabase db = ds.getReadableDatabase();
 
+        Cursor c0 = db.rawQuery("SELECT name FROM sqlite_master WHERE type='table';", null);
+        if(c0.moveToFirst()) {
+            do {
+                System.out.println(c0.getString(0));
+            } while (c0.moveToNext());
+        }
         Cursor c = params.length > 0
                 ? db.rawQuery(inPeriod, Util.period(params[0].from(), params[0].to()))
                 : db.rawQuery(inPeriod, Util.lastWeek());
@@ -39,6 +45,7 @@ public class ListTask extends AsyncTask<ListTask.Arg, Void, RssFeedAggregator> {
             } while(c.moveToNext());
         }
         c.close();
+        db.close();
 
         return news.size() > 0
                 ? new RssFeedAggregator(news)

@@ -29,9 +29,9 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        this.ds = new DataSource(this);
 
         try {
+            this.ds = new DataSource(this);
             AsyncTask<Void, Void, RssFeedAggregator> parserTask = new ParserTask().execute();
             AsyncTask<RssFeedAggregator, Void, Void> dumpTask = new DumpTask(ds).execute(parserTask.get());
             dumpTask.get();
