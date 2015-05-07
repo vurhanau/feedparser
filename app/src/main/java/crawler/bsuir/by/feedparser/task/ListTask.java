@@ -28,31 +28,24 @@ public class ListTask {
         this.ds = ds;
     }
 
-    private Exception ex;
-
     public RssFeedAggregator fetch(Arg... params) {
-        try {
-            SQLiteDatabase db = ds.getReadableDatabase();
-            Cursor c = params.length > 0
-                    ? db.rawQuery(inPeriod, Util.period(params[0].from(), params[0].to()))
-                    : db.rawQuery(top20, null);
+        SQLiteDatabase db = ds.getReadableDatabase();
+        Cursor c = params.length > 0
+                ? db.rawQuery(inPeriod, Util.period(params[0].from(), params[0].to()))
+                : db.rawQuery(top20, null);
 
-            List<RssFeed> news = new ArrayList<>();
-            if (c.moveToFirst()) {
-                do {
-                    news.add(map(c));
-                } while (c.moveToNext());
-            }
-            c.close();
-            db.close();
-
-            return news.size() > 0
-                    ? new RssFeedAggregator(news)
-                    : RssFeedAggregator.empty();
-        } catch (Exception ex) {
-            this.ex = ex;
-            return RssFeedAggregator.empty();
+        List<RssFeed> news = new ArrayList<>();
+        if (c.moveToFirst()) {
+            do {
+                news.add(map(c));
+            } while (c.moveToNext());
         }
+        c.close();
+        db.close();
+
+        return news.size() > 0
+                ? new RssFeedAggregator(news)
+                : RssFeedAggregator.empty();
 
     }
 
@@ -76,9 +69,5 @@ public class ListTask {
         public long to() {
             return to;
         }
-    }
-
-    public Exception error() {
-        return ex;
     }
 }

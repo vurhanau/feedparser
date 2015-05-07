@@ -71,6 +71,10 @@ public class MainActivity extends ActionBarActivity {
             ProgressBar bar = (ProgressBar) MainActivity.this.findViewById(R.id.progressBar);
             bar.setVisibility(View.GONE);
 
+            if (!hasInternet()) {
+                alert("Oops", "You have no internet access");
+            }
+
             if (feed == null) {
                 alert("Error", "Shit happens");
                 LinearLayout feedTable = (LinearLayout) findViewById(R.id.tableFeed);
@@ -84,30 +88,17 @@ public class MainActivity extends ActionBarActivity {
     }
 
     private RssFeedAggregator load() {
-        RssFeedAggregator latest = null;
         try {
             DataSource ds = new DataSource(this);
-
             if (hasInternet()) {
-                ParserTask parser = new ParserTask();
-                RssFeedAggregator news = parser.get();
-
-                DumpTask dumper = new DumpTask(ds);
-                dumper.flush(news);
-            } else {
-                alert("Oops", "You have no internet access");
+                RssFeedAggregator news = new ParserTask().get();
+                new DumpTask(ds).flush(news);
             }
-
-            ListTask lister = new ListTask(ds);
-            latest = lister.fetch();
-            if (lister.error() != null) {
-                throw lister.error();
-            }
+            return new ListTask(ds).fetch();
         } catch (Exception e) {
             e.printStackTrace();
+            return null;
         }
-
-        return latest;
     }
 
     private boolean hasInternet() {
@@ -146,10 +137,6 @@ public class MainActivity extends ActionBarActivity {
         TextView headerText = new TextView(MainActivity.this);
         headerText.setText(feedHeader(feed));
         row.addView(headerText);
-
-//        TextView bodyText = new TextView(this);
-//        bodyText.setText(feedBody(feed));
-//        row.addView(bodyText);
 
         row.setOnClickListener(new View.OnClickListener() {
             @Override
