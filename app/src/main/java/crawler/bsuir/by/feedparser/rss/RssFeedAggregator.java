@@ -12,6 +12,10 @@ public class RssFeedAggregator implements Iterable<RssFeed> {
         this.news = new ArrayList<>(news);
     }
 
+    public boolean isEmpty() {
+        return news.isEmpty();
+    }
+
     public static RssFeedAggregator empty() {
         return EMPTY;
     }
