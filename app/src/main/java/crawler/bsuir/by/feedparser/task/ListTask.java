@@ -29,7 +29,7 @@ public class ListTask extends AsyncTask<ListTask.Arg, Void, RssFeedAggregator> {
         SQLiteDatabase db = ds.getReadableDatabase();
         Cursor c = params.length > 0
                 ? db.rawQuery(inPeriod, Util.period(params[0].from(), params[0].to()))
-                : db.rawQuery(inPeriod, new String[]{"0", Long.toString(System.currentTimeMillis())});//Util.lastWeek());
+                : db.rawQuery(inPeriod, Util.lastWeek());
 
         List<RssFeed> news = new ArrayList<>();
         if(c.moveToFirst()) {
@@ -39,11 +39,6 @@ public class ListTask extends AsyncTask<ListTask.Arg, Void, RssFeedAggregator> {
         }
         c.close();
         db.close();
-
-        List<RssFeed> l = new ArrayList<>();
-        l.addAll(news);
-        l.addAll(news);
-        l.addAll(news);
 
         return news.size() > 0
                 ? new RssFeedAggregator(news)
