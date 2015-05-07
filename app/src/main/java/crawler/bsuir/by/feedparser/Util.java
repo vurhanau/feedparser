@@ -2,10 +2,13 @@ package crawler.bsuir.by.feedparser;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-
-import java.util.Arrays;
+import org.jsoup.Jsoup;
 
 public class Util {
+
+    public static String html2text(String html) {
+        return Jsoup.parse(html).text();
+    }
 
     public static String mul(String text, int n) {
         StringBuilder sb = new StringBuilder();

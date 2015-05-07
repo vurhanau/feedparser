@@ -3,6 +3,10 @@ package crawler.bsuir.by.feedparser;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
@@ -11,10 +15,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TableRow;
 import android.widget.TextView;
 
-import java.util.concurrent.ExecutionException;
+import org.joda.time.DateTime;
 
 import crawler.bsuir.by.feedparser.db.DataSource;
 import crawler.bsuir.by.feedparser.rss.RssFeed;
@@ -26,63 +31,170 @@ import crawler.bsuir.by.feedparser.task.ParserTask;
 
 public class MainActivity extends ActionBarActivity {
 
-    private DataSource ds;
+    private final static String TITLE = "Bsuir Feed - List";
 
+    private final static int FEED_PREVIEW_LENGTH = 120;
+
+    private static String feedHeader(RssFeed feed) {
+        DateTime dt = new DateTime(feed.pubDate());
+        return dt.toString("dd, MMM") + "  -  " + feed.title();
+    }
+
+    private static String feedBody(RssFeed feed) {
+        String text = feed.description();
+        return (text.length() > FEED_PREVIEW_LENGTH
+                ? text.substring(0, FEED_PREVIEW_LENGTH) + "..."
+                : text);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setTitle(TITLE);
         setContentView(R.layout.activity_main);
 
-        try {
-            this.ds = new DataSource(this);
-            AsyncTask<Void, Void, RssFeedAggregator> parserTask = new ParserTask().execute();
-            AsyncTask<RssFeedAggregator, Void, Void> dumpTask = new DumpTask(ds).execute(parserTask.get());
-            dumpTask.get();
-            AsyncTask<ListTask.Arg, Void, RssFeedAggregator> listTask = new ListTask(ds).execute();
+        ProgressBar progress = (ProgressBar) findViewById(R.id.progressBar);
+        progress.setIndeterminate(true);
+        new BackgroundTask().execute();
+        progress.setVisibility(View.GONE);
+    }
+
+    class BackgroundTask extends AsyncTask<Void, Void, RssFeedAggregator> {
+
+        @Override
+        protected RssFeedAggregator doInBackground(Void... params) {
+            return load();
+        }
+
+        @Override
+        protected void onPostExecute(RssFeedAggregator feed) {
+            ProgressBar bar = (ProgressBar) MainActivity.this.findViewById(R.id.progressBar);
+            bar.setVisibility(View.GONE);
+
+            if (feed == null) {
+                alert("Error", "Shit happens");
+                LinearLayout feedTable = (LinearLayout) findViewById(R.id.tableFeed);
+                feedTable.addView(emptyTableRow());
+                return;
+            }
+
             LinearLayout feedTable = (LinearLayout) findViewById(R.id.tableFeed);
-            fill(feedTable, listTask.get());
-        } catch (InterruptedException | ExecutionException e) {
+            fill(feedTable, feed);
+        }
+    }
+
+//    @Override
+//    public void onResume() {
+//        super.onResume();
+////        load();
+////        new BackgroundTask().execute();
+//    }
+
+    private RssFeedAggregator load() {
+        RssFeedAggregator latest = null;
+        try {
+            DataSource ds = new DataSource(this);
+
+            if (hasInternet()) {
+                ParserTask parser = new ParserTask();
+                RssFeedAggregator news = parser.get();
+                if (parser.error() != null) {
+                    throw parser.error();
+                }
+
+                DumpTask dumper = new DumpTask(ds);
+                dumper.flush(news);
+                if (dumper.error() != null) {
+                    throw dumper.error();
+                }
+            } else {
+                alert("Oops", "You have no internet access");
+            }
+
+            ListTask lister = new ListTask(ds);
+            latest = lister.fetch();
+            if (lister.error() != null) {
+                throw lister.error();
+            }
+        } catch (Exception e) {
             e.printStackTrace();
         }
+
+        return latest;
+    }
+
+    private boolean hasInternet() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo ni = cm.getActiveNetworkInfo();
+        return ni != null;
     }
 
     private void fill(LinearLayout feedTable, RssFeedAggregator news) {
+        if (news.isEmpty()) {
+            feedTable.addView(emptyTableRow());
+        }
+
         for (RssFeed feed : news) {
             feedTable.addView(row(feed));
+            feedTable.addView(rowSeparator());
         }
     }
 
-    private TableRow row(RssFeed feed) {
+    private TableRow emptyTableRow() {
         TableRow row = new TableRow(this);
         row.setGravity(Gravity.CENTER);
         TextView textView = new TextView(this);
-        textView.setText(feed.toString());
+        textView.setText("No data");
+        textView.setGravity(Gravity.CENTER);
         row.addView(textView);
-        final Context self = this;
-        row.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new AlertDialog.Builder(self)
-                        .setTitle("Delete entry")
-                        .setMessage("Are you sure you want to delete this entry?")
-                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                // continue with delete
-                            }
-                        })
-                        .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                // do nothing
-                            }
-                        })
-                        .setIcon(android.R.drawable.ic_dialog_alert)
-                        .show();
-            }
-        });
+
         return row;
     }
 
+
+    private TableRow row(final RssFeed feed) {
+        TableRow row = new TableRow(MainActivity.this);
+        row.setGravity(Gravity.CENTER);
+
+        TextView headerText = new TextView(MainActivity.this);
+        headerText.setText(feedHeader(feed));
+        row.addView(headerText);
+
+//        TextView bodyText = new TextView(this);
+//        bodyText.setText(feedBody(feed));
+//        row.addView(bodyText);
+
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent myIntent = new Intent(MainActivity.this, InfoActivity.class);
+                myIntent.putExtra("link", feed.link()); //Optional parameters
+                MainActivity.this.startActivity(myIntent);
+            }
+        });
+
+        return row;
+    }
+
+    private View rowSeparator() {
+        View v = new View(this);
+        v.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.FILL_PARENT, 1));
+        v.setBackgroundColor(Color.rgb(51, 51, 51));
+        return v;
+    }
+
+    public AlertDialog alert(String title, String message) {
+        return new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // continue with delete
+                    }
+                })
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

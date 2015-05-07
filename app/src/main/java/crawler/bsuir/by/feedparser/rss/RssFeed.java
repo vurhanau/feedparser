@@ -1,10 +1,10 @@
 package crawler.bsuir.by.feedparser.rss;
 
-import android.database.Cursor;
-
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.jsoup.nodes.Element;
+
+import crawler.bsuir.by.feedparser.Util;
 
 public class RssFeed {
 
@@ -20,8 +20,8 @@ public class RssFeed {
         if (!validate(rssElement))
             throw new IllegalArgumentException("invalid rss feed");
 
-        this.title = text(rssElement, "title");
-        this.description = description(text(rssElement, "description"));
+        this.title = Util.html2text(text(rssElement, "title"));
+        this.description = Util.html2text(description(text(rssElement, "description")));
         this.pubDate = date(rssElement, "dc:date");
         this.link = text(rssElement, "guid");
     }

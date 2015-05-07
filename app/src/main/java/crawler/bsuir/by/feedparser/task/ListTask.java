@@ -14,40 +14,45 @@ import crawler.bsuir.by.feedparser.rss.RssFeedAggregator;
 
 import static crawler.bsuir.by.feedparser.db.FeedReaderContract.FeedEntry;
 
-public class ListTask extends AsyncTask<ListTask.Arg, Void, RssFeedAggregator> {
+public class ListTask {
 
-    private final static String inPeriod = "select " + FeedEntry.COLUMNS_STRING + " from " + FeedEntry.TABLE_NAME
-            + " where " + FeedEntry.KEY + " >= ? and " + FeedEntry.KEY + " < ?;";
+    private final static String all = "select " + FeedEntry.COLUMNS_STRING + " from " + FeedEntry.TABLE_NAME;
+
+    private final static String inPeriod = all + " where " + FeedEntry.KEY + " >= ? and " + FeedEntry.KEY + " < ?;";
+
+    private final static String top20 = all + " order by pubdate desc limit 20;";
+
     private final DataSource ds;
 
     public ListTask(DataSource ds) {
         this.ds = ds;
     }
 
-    @Override
-    protected RssFeedAggregator doInBackground(Arg... params) {
-        SQLiteDatabase db = ds.getReadableDatabase();
-        Cursor c = params.length > 0
-                ? db.rawQuery(inPeriod, Util.period(params[0].from(), params[0].to()))
-                : db.rawQuery(inPeriod, new String[]{"0", Long.toString(System.currentTimeMillis())});//Util.lastWeek());
+    private Exception ex;
 
-        List<RssFeed> news = new ArrayList<>();
-        if(c.moveToFirst()) {
-            do {
-                news.add(map(c));
-            } while(c.moveToNext());
+    public RssFeedAggregator fetch(Arg... params) {
+        try {
+            SQLiteDatabase db = ds.getReadableDatabase();
+            Cursor c = params.length > 0
+                    ? db.rawQuery(inPeriod, Util.period(params[0].from(), params[0].to()))
+                    : db.rawQuery(top20, null);
+
+            List<RssFeed> news = new ArrayList<>();
+            if (c.moveToFirst()) {
+                do {
+                    news.add(map(c));
+                } while (c.moveToNext());
+            }
+            c.close();
+            db.close();
+
+            return news.size() > 0
+                    ? new RssFeedAggregator(news)
+                    : RssFeedAggregator.empty();
+        } catch (Exception ex) {
+            this.ex = ex;
+            return RssFeedAggregator.empty();
         }
-        c.close();
-        db.close();
-
-        List<RssFeed> l = new ArrayList<>();
-        l.addAll(news);
-        l.addAll(news);
-        l.addAll(news);
-
-        return news.size() > 0
-                ? new RssFeedAggregator(news)
-                : RssFeedAggregator.empty();
 
     }
 
@@ -73,4 +78,7 @@ public class ListTask extends AsyncTask<ListTask.Arg, Void, RssFeedAggregator> {
         }
     }
 
+    public Exception error() {
+        return ex;
+    }
 }
