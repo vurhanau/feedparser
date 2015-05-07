@@ -9,12 +9,14 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBarActivity;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.LinearLayout;
+import android.widget.AdapterView;
+import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -27,13 +29,14 @@ import crawler.bsuir.by.feedparser.rss.RssFeedAggregator;
 import crawler.bsuir.by.feedparser.task.DumpTask;
 import crawler.bsuir.by.feedparser.task.ListTask;
 import crawler.bsuir.by.feedparser.task.ParserTask;
+import crawler.bsuir.by.feedparser.ui.AggregatorAdapter;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends ActionBarActivity implements SwipeRefreshLayout.OnRefreshListener {
 
     private final static String TITLE = "Bsuir Feed - List";
 
-    private final static int FEED_PREVIEW_LENGTH = 120;
+    private final static int FEED_PREVIEW_LENGTH = 200;
 
     private static String feedHeader(RssFeed feed) {
         DateTime dt = new DateTime(feed.pubDate());
@@ -44,7 +47,7 @@ public class MainActivity extends ActionBarActivity {
         String text = feed.description();
         return (text.length() > FEED_PREVIEW_LENGTH
                 ? text.substring(0, FEED_PREVIEW_LENGTH) + "..."
-                : text);
+                : text) + " >>>";
     }
 
     @Override
@@ -53,13 +56,25 @@ public class MainActivity extends ActionBarActivity {
         setTitle(TITLE);
         setContentView(R.layout.activity_main);
 
-        ProgressBar progress = (ProgressBar) findViewById(R.id.progressBar);
-        progress.setIndeterminate(true);
-        new BackgroundTask().execute();
-        progress.setVisibility(View.GONE);
+        SwipeRefreshLayout refresh = (SwipeRefreshLayout) findViewById(R.id.refresh);
+        refresh.setOnRefreshListener(MainActivity.this);
+
+        new FillTask().execute();
     }
 
-    class BackgroundTask extends AsyncTask<Void, Void, RssFeedAggregator> {
+    @Override
+    public void onRefresh() {
+        new FillTask().execute();
+    }
+
+    class FillTask extends AsyncTask<Void, Void, RssFeedAggregator> {
+
+        @Override
+        protected void onPreExecute() {
+            ProgressBar progress = (ProgressBar) findViewById(R.id.progressBar);
+            progress.setIndeterminate(true);
+            progress.setVisibility(View.VISIBLE);
+        }
 
         @Override
         protected RssFeedAggregator doInBackground(Void... params) {
@@ -68,8 +83,12 @@ public class MainActivity extends ActionBarActivity {
 
         @Override
         protected void onPostExecute(RssFeedAggregator feed) {
-            ProgressBar bar = (ProgressBar) MainActivity.this.findViewById(R.id.progressBar);
+            ListView feedTable = (ListView) findViewById(R.id.tableFeed);
+            ProgressBar bar = (ProgressBar) findViewById(R.id.progressBar);
             bar.setVisibility(View.GONE);
+
+            SwipeRefreshLayout refresh = (SwipeRefreshLayout) findViewById(R.id.refresh);
+            refresh.setRefreshing(false);
 
             if (!hasInternet()) {
                 alert("Oops", "You have no internet access");
@@ -77,15 +96,14 @@ public class MainActivity extends ActionBarActivity {
 
             if (feed == null) {
                 alert("Error", "Shit happens");
-                LinearLayout feedTable = (LinearLayout) findViewById(R.id.tableFeed);
                 feedTable.addView(emptyTableRow());
                 return;
             }
 
-            LinearLayout feedTable = (LinearLayout) findViewById(R.id.tableFeed);
-            fill(feedTable, feed);
+            fill(feed);
         }
     }
+
 
     private RssFeedAggregator load() {
         try {
@@ -107,15 +125,31 @@ public class MainActivity extends ActionBarActivity {
         return ni != null;
     }
 
-    private void fill(LinearLayout feedTable, RssFeedAggregator news) {
-        if (news.isEmpty()) {
-            feedTable.addView(emptyTableRow());
-        }
+    private void fill(final RssFeedAggregator news) {
+        final ListView listview = (ListView) findViewById(R.id.tableFeed);
+        final AggregatorAdapter adapter = new AggregatorAdapter(this, news);
+        listview.setAdapter(adapter);
+        listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                Intent myIntent = new Intent(MainActivity.this, InfoActivity.class);
+                myIntent.putExtra("link", news.get(i).link()); //Optional parameters
+                MainActivity.this.startActivity(myIntent);
+            }
+        });
 
-        for (RssFeed feed : news) {
-            feedTable.addView(row(feed));
-            feedTable.addView(rowSeparator());
-        }
+
+//        feedTable.addView(rowSeparator());
+//
+//        if (news.isEmpty()) {
+//            feedTable.addView(emptyTableRow());
+//        }
+//
+//        for (RssFeed feed : news) {
+//            feedTable.addView(rowHead(feed));
+//            feedTable.addView(rowBody(feed));
+//            feedTable.addView(rowSeparator());
+//        }
     }
 
     private TableRow emptyTableRow() {
@@ -130,7 +164,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
-    private TableRow row(final RssFeed feed) {
+    private TableRow rowHead(final RssFeed feed) {
         TableRow row = new TableRow(MainActivity.this);
         row.setGravity(Gravity.CENTER);
 
@@ -150,9 +184,30 @@ public class MainActivity extends ActionBarActivity {
         return row;
     }
 
+    private TableRow rowBody(final RssFeed feed) {
+        TableRow row = new TableRow(MainActivity.this);
+        row.setGravity(Gravity.CENTER);
+        row.setBackgroundColor(Color.rgb(255, 255, 255));
+
+        TextView bodyText = new TextView(MainActivity.this);
+        bodyText.setText(feedBody(feed));
+        row.addView(bodyText);
+
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent myIntent = new Intent(MainActivity.this, InfoActivity.class);
+                myIntent.putExtra("link", feed.link()); //Optional parameters
+                MainActivity.this.startActivity(myIntent);
+            }
+        });
+
+        return row;
+    }
+
     private View rowSeparator() {
         View v = new View(this);
-        v.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.FILL_PARENT, 1));
+        v.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.FILL_PARENT, 3));
         v.setBackgroundColor(Color.rgb(51, 51, 51));
         return v;
     }

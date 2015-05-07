@@ -10,28 +10,20 @@
         android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:id="@+id/progressBar"></ProgressBar>
 
-
-    <ScrollView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/scrollView"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentTop="true">
-
-        <LinearLayout
-            android:orientation="vertical"
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
+    <android.support.v4.widget.SwipeRefreshLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/refresh"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context="com.shppandroid1.app.MainActivity">
+        <ListView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:id="@+id/tableFeed"
-            android:layout_alignBottom="@+id/scrollView"
+            android:layout_alignParentTop="true"
             android:layout_alignParentLeft="true"
-            android:layout_alignParentStart="true"
-            android:paddingBottom="6dip"
-            android:paddingTop="4dip"/>
-    </ScrollView>
+            android:layout_alignParentStart="true" />
+    </android.support.v4.widget.SwipeRefreshLayout>
 
 </RelativeLayout>
