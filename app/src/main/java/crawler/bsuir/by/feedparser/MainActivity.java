@@ -44,7 +44,7 @@ public class MainActivity extends ActionBarActivity {
         String text = feed.description();
         return (text.length() > FEED_PREVIEW_LENGTH
                 ? text.substring(0, FEED_PREVIEW_LENGTH) + "..."
-                : text);
+                : text) + " >>>";
     }
 
     @Override
@@ -56,7 +56,6 @@ public class MainActivity extends ActionBarActivity {
         ProgressBar progress = (ProgressBar) findViewById(R.id.progressBar);
         progress.setIndeterminate(true);
         new BackgroundTask().execute();
-        progress.setVisibility(View.GONE);
     }
 
     class BackgroundTask extends AsyncTask<Void, Void, RssFeedAggregator> {
@@ -116,6 +115,8 @@ public class MainActivity extends ActionBarActivity {
             if (lister.error() != null) {
                 throw lister.error();
             }
+            Thread.sleep(3000);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -130,12 +131,15 @@ public class MainActivity extends ActionBarActivity {
     }
 
     private void fill(LinearLayout feedTable, RssFeedAggregator news) {
+        feedTable.addView(rowSeparator());
+
         if (news.isEmpty()) {
             feedTable.addView(emptyTableRow());
         }
 
         for (RssFeed feed : news) {
-            feedTable.addView(row(feed));
+            feedTable.addView(rowHead(feed));
+            feedTable.addView(rowBody(feed));
             feedTable.addView(rowSeparator());
         }
     }
@@ -152,7 +156,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
-    private TableRow row(final RssFeed feed) {
+    private TableRow rowHead(final RssFeed feed) {
         TableRow row = new TableRow(MainActivity.this);
         row.setGravity(Gravity.CENTER);
 
@@ -160,9 +164,26 @@ public class MainActivity extends ActionBarActivity {
         headerText.setText(feedHeader(feed));
         row.addView(headerText);
 
-//        TextView bodyText = new TextView(this);
-//        bodyText.setText(feedBody(feed));
-//        row.addView(bodyText);
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent myIntent = new Intent(MainActivity.this, InfoActivity.class);
+                myIntent.putExtra("link", feed.link()); //Optional parameters
+                MainActivity.this.startActivity(myIntent);
+            }
+        });
+
+        return row;
+    }
+
+    private TableRow rowBody(final RssFeed feed) {
+        TableRow row = new TableRow(MainActivity.this);
+        row.setGravity(Gravity.CENTER);
+        row.setBackgroundColor(Color.rgb(255, 255, 255));
+
+        TextView bodyText = new TextView(MainActivity.this);
+        bodyText.setText(feedBody(feed));
+        row.addView(bodyText);
 
         row.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -178,7 +199,7 @@ public class MainActivity extends ActionBarActivity {
 
     private View rowSeparator() {
         View v = new View(this);
-        v.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.FILL_PARENT, 1));
+        v.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.FILL_PARENT, 3));
         v.setBackgroundColor(Color.rgb(51, 51, 51));
         return v;
     }
